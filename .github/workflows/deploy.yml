@@ -1,0 +1,17 @@
+on:
+  workflow_dispatch:
+  repository_dispatch:
+  push:
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: yarn install
+        run: yarn
+
+      - name: publish
+        run: yarn publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
