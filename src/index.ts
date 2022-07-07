@@ -26,11 +26,12 @@ const allowedOrigins = [
     "https://preview.gms.chikach.net",
 ]
 
+// noinspection JSUnusedGlobalSymbols
 export default {
   async fetch(
     request: Request,
-    env: Env,
-    ctx: ExecutionContext
+    _: Env,
+    __: ExecutionContext
   ): Promise<Response> {
     const {pathname, searchParams} = new URL(request.url)
     switch (pathname) {
