@@ -18,6 +18,8 @@ jobs:
         run: yarn
 
       - name: publish
-        run: yarn deploy
+        run: |
+          echo $CLOUDFLARE_API_TOKEN
+          yarn deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
