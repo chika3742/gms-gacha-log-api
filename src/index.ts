@@ -151,7 +151,7 @@ async function sendRequest(authKey: string, wishType: string, lastId?: string): 
   if (data?.data?.list) {
     return (data.data.list as any[]).map(e => ({
       id: e.id,
-      gachaType: e.gacha_type,
+      gachaType: e.gacha_type === "400" ? "301" : e.gacha_type,
       name: e.name,
       time: e.time,
       itemType: e.item_type,
