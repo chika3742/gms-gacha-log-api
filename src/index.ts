@@ -21,9 +21,9 @@ export interface Env {
 
 const allowedOrigins = [
     "http://localhost:3000",
-    "https://gm.chikach.net",
     "https://gms.chikach.net",
     "https://preview.gms.chikach.net",
+    "https://dev.gms.chikach.net",
 ]
 
 // noinspection JSUnusedGlobalSymbols
