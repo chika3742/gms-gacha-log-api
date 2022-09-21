@@ -7,6 +7,7 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
+import {characterIdCorrespTable, travelerSkillSetIdCorrespTable} from "./characterIdCorrespTable";
 
 export interface Env {
   // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
@@ -22,8 +23,8 @@ export interface Env {
 const allowedOrigins = [
     "http://localhost:3000",
     "https://gms.chikach.net",
-    "https://preview.gms.chikach.net",
-    "https://dev.gms.chikach.net",
+    "https://beta.gms.chikach.net",
+    "https://branch-dev.vercelpreview.gms.chikach.net",
 ]
 
 // noinspection JSUnusedGlobalSymbols
@@ -69,6 +70,45 @@ export default {
         } else {
           return new Response("405 Method Not Allowed", {status: 405})
         }
+
+      case "/avatarInfo":
+        if (request.method === "GET") {
+          return cors(request, async (headers) => {
+            if (!searchParams.has("uid")) {
+              return jsonResponse({
+                errorMessage: "必要なパラメーターが提供されていません",
+              }, headers, 400)
+            }
+
+            const uid = searchParams.get("uid")!
+
+            if (!uid.match(/^\d{9,}$/)) {
+              return jsonResponse({
+                errorMessage: "UIDの形式が正しくありません",
+              }, headers, 400)
+            }
+
+            try {
+              const result = await sendEnkaNetworkRequest(uid)
+
+              return jsonResponse(result, headers)
+            } catch (e: any) {
+              if (e instanceof GachaLogRequestFailureException) {
+                return jsonResponse(e.toJson(), headers, e.statusCode)
+              } else {
+                console.error(e.toString())
+                return jsonResponse({"errorMessage": "500 Internal Server Error"}, headers, 500)
+              }
+            }
+          })
+        } else if (request.method === "OPTIONS") {
+          return cors(request, (headers) => {
+            return new Response(null, {headers})
+          })
+        } else {
+          return new Response("405 Method Not Allowed", {status: 405})
+        }
+
       default:
         return new Response("404 Not Found", {status: 404})
     }
@@ -108,7 +148,7 @@ async function getGachaLog(authKey: string, wishType: string, lastId: string | n
   let lastIdTemp: string | undefined = undefined
 
   while (!endLoop) {
-    const list: GachaLogData[] = await sendRequest(authKey, wishType, lastIdTemp)
+    const list: GachaLogData[] = await sendGachaLogRequest(authKey, wishType, lastIdTemp)
 
     await new Promise((resolve) => {
       setTimeout(() => {
@@ -138,7 +178,7 @@ async function getGachaLog(authKey: string, wishType: string, lastId: string | n
   return result.reverse()
 }
 
-async function sendRequest(authKey: string, wishType: string, lastId?: string): Promise<GachaLogData[]> {
+async function sendGachaLogRequest(authKey: string, wishType: string, lastId?: string): Promise<GachaLogData[]> {
   let url = `https://hk4e-api-os.mihoyo.com/event/gacha_info/api/getGachaLog?authkey=${encodeURIComponent(authKey)}&authkey_ver=1&lang=ja&region=os_asia&game_biz=hk4e_global&size=20&gacha_type=${wishType}`
   if (lastId) {
     url += `&end_id=${lastId}`
@@ -158,7 +198,7 @@ async function sendRequest(authKey: string, wishType: string, lastId?: string): 
       rankType: e.rank_type,
     } as GachaLogData))
 
-  }  else {
+  } else {
     let statusCode: number
     let errorMessage: string
 
@@ -181,6 +221,53 @@ async function sendRequest(authKey: string, wishType: string, lastId?: string): 
     }
 
     throw new GachaLogRequestFailureException(statusCode, errorMessage, data)
+  }
+}
+
+async function sendEnkaNetworkRequest(uid: string): Promise<AvatarInfo | ErrorResponse> {
+  const result = await fetch(new Request(`https://enka.network/u/${uid}/__data.json`))
+
+  if (result.status !== 200) {
+    return {
+      errorMessage: "UIDが存在しません"
+    }
+  }
+
+  const data = JSON.parse(await result.text()) as EnkaNetworkResponse
+
+  if (!data.playerInfo.showAvatarInfoList || !data.avatarInfoList || data.playerInfo.showAvatarInfoList.length === 0) {
+    return {
+      errorMessage: "キャラクターラインナップの詳細が公開されていないか、1体も設定されていません"
+    }
+  }
+
+  return {
+    uid: data.uid,
+    ttl: data.ttl,
+    username: data.playerInfo.nickname,
+    adventureRank: data.playerInfo.level,
+    showcaseCharacters: data.playerInfo.showAvatarInfoList.map((e, index) => {
+      let skillLevels = Object.values(data.avatarInfoList[index].skillLevelMap);
+      if (skillLevels.length === 4) skillLevels.splice(0, 1)
+
+      let characterName = characterIdCorrespTable[e.avatarId]
+
+      if (characterName === "Traveler") {
+        characterName = travelerSkillSetIdCorrespTable[data.avatarInfoList[index].skillDepotId]
+      }
+
+      return {
+        characterId: e.avatarId,
+        characterName,
+        level: e.level,
+        ascension: parseInt(data.avatarInfoList[index].propMap["1002"].val),
+        talentLevels: {
+          normal: skillLevels[0],
+          skill: skillLevels[1],
+          burst: skillLevels[2],
+        }
+      }
+    }),
   }
 }
 
