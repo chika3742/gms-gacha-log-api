@@ -225,11 +225,53 @@ async function sendGachaLogRequest(authKey: string, wishType: string, lastId?: s
 }
 
 async function sendEnkaNetworkRequest(uid: string): Promise<AvatarInfo | ErrorResponse> {
-  const result = await fetch(new Request(`https://enka.network/u/${uid}/__data.json`))
+  const result = await fetch(new Request(`https://enka.network/u/${uid}/__data.json`, {
+    headers: {
+      "User-Agent": "Genshin Material Data Sync/1.0.0 (gms.chikach.net)"
+    }
+  }))
 
   if (result.status !== 200) {
-    return {
-      errorMessage: "UIDが存在しません"
+    switch (result.status) {
+      case 204:
+        return {
+          errorMessage: "キャラクターの性別を選択してから再度お試しください。"
+        }
+
+      case 404:
+        return {
+          errorMessage: "UIDが存在しません。"
+        }
+
+      case 424:
+        return {
+          errorMessage: "現在サーバーメンテナンス中です。"
+        }
+
+      case 429:
+        return {
+          errorMessage: "リクエストが頻繁すぎます。しばらく待ってから再度お試しください。"
+        }
+
+      case 503:
+        return {
+          errorMessage: "現在サーバーメンテナンス中です。"
+        }
+
+      case 504:
+        return {
+          errorMessage: "しばらく待ってから再度お試しください。"
+        }
+
+      case 500:
+        return {
+          errorMessage: "UIDが存在しません。"
+        }
+
+      default:
+        return {
+          errorMessage: `APIサーバーがステータスコード ${result.status} を返しました。`
+        }
     }
   }
 

@@ -54,6 +54,11 @@ export const characterIdCorrespTable = {
   "10000067": "Collei",
   "10000068": "Dori",
   "10000069": "Tighnari",
+  "10000070": "Nilou",
+  "10000071": "Cyno",
+  "10000072": "Candace",
+  "10000073": "Nahida",
+  "10000074": "Layla",
 } as {[remoteId: string]: string}
 
 export const travelerSkillSetIdCorrespTable = {
