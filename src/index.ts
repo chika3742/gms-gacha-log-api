@@ -179,7 +179,7 @@ async function getGachaLog(authKey: string, wishType: string, lastId: string | n
 }
 
 async function sendGachaLogRequest(authKey: string, wishType: string, lastId?: string): Promise<GachaLogData[]> {
-  let url = `https://hk4e-api-os.mihoyo.com/gacha_info/api/getGachaLog?authkey=${encodeURIComponent(authKey)}&authkey_ver=1&lang=ja&region=os_asia&game_biz=hk4e_global&size=20&gacha_type=${wishType}`
+  let url = `https://public-operation-hk4e-sg.hoyoverse.com/gacha_info/api/getGachaLog?authkey=${encodeURIComponent(authKey)}&authkey_ver=1&lang=ja&region=os_asia&game_biz=hk4e_global&size=20&gacha_type=${wishType}`
   if (lastId) {
     url += `&end_id=${lastId}`
   }
