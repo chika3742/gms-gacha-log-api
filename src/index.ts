@@ -7,7 +7,6 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
-import {characterIdCorrespTable, travelerSkillSetIdCorrespTable} from "./characterIdCorrespTable";
 
 export interface Env {
   // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
@@ -50,44 +49,6 @@ export default {
               for (const wishType of gachaTypes) {
                 result.push(...await getGachaLog(searchParams.get("authKey")!, wishType.toString(), searchParams.get(`lastId${wishType}`)))
               }
-
-              return jsonResponse(result, headers)
-            } catch (e: any) {
-              if (e instanceof GachaLogRequestFailureException) {
-                return jsonResponse(e.toJson(), headers, e.statusCode)
-              } else {
-                console.error(e.toString())
-                return jsonResponse({"errorMessage": "500 Internal Server Error"}, headers, 500)
-              }
-            }
-          })
-        } else if (request.method === "OPTIONS") {
-          return cors(request, (headers) => {
-            return new Response(null, {headers})
-          })
-        } else {
-          return new Response("405 Method Not Allowed", {status: 405})
-        }
-
-      case "/avatarInfo":
-        if (request.method === "GET") {
-          return cors(request, async (headers) => {
-            if (!searchParams.has("uid")) {
-              return jsonResponse({
-                errorMessage: "必要なパラメーターが提供されていません",
-              }, headers, 400)
-            }
-
-            const uid = searchParams.get("uid")!
-
-            if (!uid.match(/^\d{9,}$/)) {
-              return jsonResponse({
-                errorMessage: "UIDの形式が正しくありません",
-              }, headers, 400)
-            }
-
-            try {
-              const result = await sendEnkaNetworkRequest(uid)
 
               return jsonResponse(result, headers)
             } catch (e: any) {
@@ -219,95 +180,6 @@ async function sendGachaLogRequest(authKey: string, wishType: string, lastId?: s
     }
 
     throw new GachaLogRequestFailureException(statusCode, errorMessage, data)
-  }
-}
-
-async function sendEnkaNetworkRequest(uid: string): Promise<AvatarInfo | ErrorResponse> {
-  const result = await fetch(new Request(`https://enka.network/u/${uid}/__data.json`, {
-    headers: {
-      "User-Agent": "Genshin Material Data Sync/1.0.0 (gms.chikach.net)"
-    }
-  }))
-
-  if (result.status !== 200) {
-    switch (result.status) {
-      case 204:
-        return {
-          errorMessage: "キャラクターの性別を選択してから再度お試しください。"
-        }
-
-      case 404:
-        return {
-          errorMessage: "UIDが存在しません。"
-        }
-
-      case 424:
-        return {
-          errorMessage: "現在サーバーメンテナンス中です。"
-        }
-
-      case 429:
-        return {
-          errorMessage: "リクエストが頻繁すぎます。しばらく待ってから再度お試しください。"
-        }
-
-      case 503:
-        return {
-          errorMessage: "現在サーバーメンテナンス中です。"
-        }
-
-      case 504:
-        return {
-          errorMessage: "しばらく待ってから再度お試しください。"
-        }
-
-      case 500:
-        return {
-          errorMessage: "UIDが存在しません。"
-        }
-
-      default:
-        return {
-          errorMessage: `APIサーバーがステータスコード ${result.status} を返しました。`
-        }
-    }
-  }
-
-  const data = JSON.parse(await result.text()) as EnkaNetworkResponse
-
-  if (!data.playerInfo.showAvatarInfoList || !data.avatarInfoList || data.playerInfo.showAvatarInfoList.length === 0) {
-    return {
-      errorMessage: "キャラクターラインナップの詳細が公開されていないか、1体も設定されていません"
-    }
-  }
-
-  return {
-    uid: data.uid,
-    ttl: data.ttl,
-    username: data.playerInfo.nickname,
-    adventureRank: data.playerInfo.level,
-    showcaseCharacters: data.playerInfo.showAvatarInfoList.map((e, index) => {
-      let skillLevels = Object.values(data.avatarInfoList[index].skillLevelMap);
-      if (skillLevels.length === 4) skillLevels.splice(0, 1)
-
-      let characterName = characterIdCorrespTable[e.avatarId]
-
-      if (characterName === "Traveler") {
-        characterName = travelerSkillSetIdCorrespTable[data.avatarInfoList[index].skillDepotId]
-      }
-
-      return {
-        characterId: e.avatarId,
-        characterName,
-        level: e.level,
-        ascension: parseInt(data.avatarInfoList[index].propMap["1002"].val),
-        talentLevels: {
-          normal: skillLevels[0],
-          skill: skillLevels[1],
-          burst: skillLevels[2],
-        }
-      }
-    }),
   }
 }
 
